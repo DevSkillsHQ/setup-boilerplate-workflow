@@ -29,24 +29,51 @@ jobs:
           branch_name=${{ github.event.inputs.branch-name }}
           boilerplate=${{ github.event.inputs.boilerplate }}
           git clone https://github.com/DevSkillsHQ/$boilerplate.git
-          cp $boilerplate/package.json .
+          
+          # Parse "build" and "start" scripts from the boilerplate's package.json and write it to a new JSON file
+          jq '{scripts: {build: .scripts.build, start: .scripts.start}}' $boilerplate/package.json > scripts.json
+
+          # Merge the existing package.json with the scripts.json
+          jq -s '.[0] * .[1]' package.json scripts.json > package.tmp.json && mv package.tmp.json package.json
+
+          # Remove the temporary scripts.json file
+          rm scripts.json
+
           cp -r $boilerplate/app* .
           
-          # Check if cypress.json exists in the current directory and the $boilerplate directory
-          if [[ -f "cypress.json" && -f "$boilerplate/cypress.json" ]]; then
-            cp $boilerplate/cypress.json . 
-            git add cypress.json
+          # Fetch apiUrl from cypress.json or cypress.config.js
+          if [ -f "$boilerplate/cypress.json" ]; then
+            apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
+          elif [ -f "$boilerplate/cypress.config.js" ]; then
+            apiUrl=$(node -e "\
+              const config = require('./$boilerplate/cypress.config.js');\
+              console.log(config.env.apiUrl);\
+            ")
+          else
+            echo "Neither cypress.json nor cypress.config.js was found in the $boilerplate directory"
+            exit 1
           fi
 
-          # Check if cypress.config.js exists in the current directory and the $boilerplate directory
-          if [[ -f "cypress.config.js" && -f "$boilerplate/cypress.config.js" ]]; then
-            cp $boilerplate/cypress.config.js . 
-            git add cypress.config.js
+          # Set apiUrl in cypress.json or cypress.config.js of the current directory
+          if [ -f "cypress.json" ]; then
+            jq ".env.apiUrl |= \"$apiUrl\"" cypress.json > cypress.temp.json && mv cypress.temp.json cypress.json
+          elif [ -f "cypress.config.js" ]; then
+            node -e "\
+              const fs = require('fs');\
+              const config = require('./cypress.config.js');\
+              config.env.apiUrl = '$apiUrl';\
+              fs.writeFileSync('cypress.config.js', 'module.exports = ' + JSON.stringify(config, null, 2));\
+            "
+          else
+            echo "Neither cypress.json nor cypress.config.js was found in the current directory"
+            exit 1
           fi
+          
+          git add cypress.*
           
           rm -rf $boilerplate
           npm i
-          git add package* app*
+          git add package.json app*
           
           git config --global user.email "setup-boilerplate@example.com"
           git config --global user.name "Setup boilerplate"
