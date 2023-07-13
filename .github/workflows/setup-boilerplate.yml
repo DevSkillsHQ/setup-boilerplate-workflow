@@ -30,11 +30,23 @@ jobs:
           boilerplate=${{ github.event.inputs.boilerplate }}
           git clone https://github.com/DevSkillsHQ/$boilerplate.git
           cp $boilerplate/package.json .
-          cp $boilerplate/cypress.json .
           cp -r $boilerplate/app* .
           rm -rf $boilerplate
           npm i
-          git add cypress.json package* app*
+          git add package* app*
+          
+          # Check if cypress.json exists in the current directory
+          if [[ -f "cypress.json" ]]; then
+            cp $boilerplate/cypress.json .
+            git add cypress.json
+          fi
+
+          # Check if cypress.config.js exists in the current directory
+          if [[ -f "cypress.config.js" ]]; then
+            cp $boilerplate/cypress.config.js .
+            git add cypress.config.js
+          fi
+          
           git config --global user.email "setup-boilerplate@example.com"
           git config --global user.name "Setup boilerplate"
           git commit -m "Initialize boilerplate $boilerplate"
