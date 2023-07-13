@@ -23,9 +23,60 @@ jobs:
         run: |
           branch_name=${{ github.event.inputs.branch-name }}
           git fetch --all
+          # checkout to branch if exists else create new
           git checkout $branch_name || git checkout -b $branch_name
       - name: Setup boilerplate
-        run: ./setup-boilerplate.sh ${{ github.event.inputs.branch-name }} ${{ github.event.inputs.boilerplate }}
+        run: |
+          branch_name=${{ github.event.inputs.branch-name }}
+          boilerplate=${{ github.event.inputs.boilerplate }}
+          # clone the boilerplate repository
+          git clone https://github.com/DevSkillsHQ/$boilerplate.git
+          
+          # parse "build" and "start" scripts from the boilerplate's package.json and write it to a new JSON file
+          jq '{scripts: {build: .scripts.build, start: .scripts.start}}' $boilerplate/package.json > scripts.json
+
+          # merge the existing package.json with the scripts.json
+          jq -s '.[0] * .[1]' package.json scripts.json > package.tmp.json && mv package.tmp.json package.json
+
+          # remove the temporary scripts.json file
+          rm scripts.json
+
+          # copy all app related files
+          cp -r $boilerplate/app* .
+          
+          # fetch apiUrl from cypress.json or cypress.config.js
+          if [ -f "$boilerplate/cypress.json" ]; then
+            apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
+          elif [ -f "$boilerplate/cypress.config.js" ]; then
+            apiUrl=$(node -p "require('./$boilerplate/cypress.config.js').env.apiUrl")
+          else
+            echo "Neither cypress.json nor cypress.config.js was found in the $boilerplate directory"
+            exit 1
+          fi
+
+          # set apiUrl in cypress.json or cypress.config.js of the current directory
+          if [ -f "cypress.json" ]; then
+            jq ".env.apiUrl |= \"$apiUrl\"" cypress.json > cypress.temp.json && mv cypress.temp.json cypress.json
+          elif [ -f "cypress.config.js" ]; then
+            sed -i -e "s|\(apiUrl: \).*,|\1'$apiUrl',|g" cypress.config.js
+          else
+            echo "Neither cypress.json nor cypress.config.js was found in the current directory"
+            exit 1
+          fi
+          
+          # add cypress files to staging
+          git add cypress.*
+          
+          # remove boilerplate folder, install npm dependencies, add package.json and app* files to staging
+          rm -rf $boilerplate
+          npm i
+          git add package.json app*
+          
+          # set git config and commit changes
+          git config --global user.email "setup-boilerplate@example.com"
+          git config --global user.name "Setup boilerplate"
+          git commit -m "Initialize boilerplate $boilerplate"
+          git push origin $branch_name
       - name: Error summary
         if: failure()
         run: |
