@@ -46,8 +46,10 @@ jobs:
             apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
           elif [ -f "$boilerplate/cypress.config.js" ]; then
             apiUrl=$(node -e "\
-              const config = require('./$boilerplate/cypress.config.js');\
-              console.log(config.env.apiUrl);\
+              const fs = require('fs');\
+              const fileContent = fs.readFileSync('./$boilerplate/cypress.config.js', 'utf-8');\
+              const match = fileContent.match(/apiUrl:\\s?'([^']*)'/);\
+              if (match) console.log(match[1]);\
             ")
           else
             echo "Neither cypress.json nor cypress.config.js was found in the $boilerplate directory"
@@ -60,9 +62,9 @@ jobs:
           elif [ -f "cypress.config.js" ]; then
             node -e "\
               const fs = require('fs');\
-              const config = require('./cypress.config.js');\
-              config.env.apiUrl = '$apiUrl';\
-              fs.writeFileSync('cypress.config.js', 'module.exports = ' + JSON.stringify(config, null, 2));\
+              let fileContent = fs.readFileSync('./cypress.config.js', 'utf-8');\
+              fileContent = fileContent.replace(/(apiUrl:\\s?')[^']*'/, \`$1${apiUrl}'\`);\
+              fs.writeFileSync('./cypress.config.js', fileContent);\
             "
           else
             echo "Neither cypress.json nor cypress.config.js was found in the current directory"
