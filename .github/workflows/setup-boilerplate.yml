@@ -41,20 +41,24 @@ jobs:
           # copy all app related files
           cp -r $boilerplate/app* .
           
-          # fetch apiUrl from cypress.json or cypress.config.js
+          # fetch baseUrl and apiUrl from cypress.json or cypress.config.js
           if [ -f "$boilerplate/cypress.json" ]; then
+            baseUrl=$(jq -r 'baseUrl' $boilerplate/cypress.json)
             apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
           elif [ -f "$boilerplate/cypress.config.js" ]; then
+            baseUrl=$(node -p "require('./$boilerplate/cypress.config.js').e2e.baseUrl")
             apiUrl=$(node -p "require('./$boilerplate/cypress.config.js').env.apiUrl")
           else
             echo "Neither cypress.json nor cypress.config.js was found in the $boilerplate directory"
             exit 1
           fi
 
-          # set apiUrl in cypress.json or cypress.config.js of the current directory
+          # set baseUrl and apiUrl in cypress.json or cypress.config.js of the current directory
           if [ -f "cypress.json" ]; then
+            jq ".baseUrl |= \"$baseUrl\"" cypress.json > cypress.temp.json && mv cypress.temp.json cypress.json
             jq ".env.apiUrl |= \"$apiUrl\"" cypress.json > cypress.temp.json && mv cypress.temp.json cypress.json
           elif [ -f "cypress.config.js" ]; then
+            sed -i -e "s|\(baseUrl: \).*,|\1'$baseUrl',|g" cypress.config.js
             sed -i -e "s|\(apiUrl: \).*,|\1'$apiUrl',|g" cypress.config.js
           else
             echo "Neither cypress.json nor cypress.config.js was found in the current directory"
