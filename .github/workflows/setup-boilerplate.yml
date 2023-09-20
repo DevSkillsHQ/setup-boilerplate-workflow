@@ -43,7 +43,7 @@ jobs:
           
           # fetch baseUrl and apiUrl from cypress.json or cypress.config.js
           if [ -f "$boilerplate/cypress.json" ]; then
-            baseUrl=$(jq -r 'baseUrl' $boilerplate/cypress.json)
+            baseUrl=$(jq -r '.baseUrl' $boilerplate/cypress.json)
             apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
           elif [ -f "$boilerplate/cypress.config.js" ]; then
             baseUrl=$(node -p "require('./$boilerplate/cypress.config.js').e2e.baseUrl")
