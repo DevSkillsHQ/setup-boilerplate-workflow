@@ -32,15 +32,12 @@ jobs:
           # clone the boilerplate repository
           git clone https://github.com/DevSkillsHQ/$boilerplate.git
           
-          # parse "build" and "start" scripts from the boilerplate's package.json and write it to a new JSON file
-          jq '{scripts: {build: .scripts.build, start: .scripts.start}}' $boilerplate/package.json > scripts.json
-
-          # merge the existing package.json with the scripts.json
-          jq -s '.[0] * .[1]' package.json scripts.json > package.tmp.json && mv package.tmp.json package.json
-
-          # remove the temporary scripts.json file
-          rm scripts.json
-
+          # replace scripts in package.json with scripts from boilerplate and save full result to package.tmp.json
+          jq '.scripts = input.scripts' package.json $boilerplate/package.json > package.tmp.json
+          
+          # replace package.json with package.tmp.json
+          mv package.tmp.json package.json
+          
           # copy all app related files
           cp -r $boilerplate/app* .
           
