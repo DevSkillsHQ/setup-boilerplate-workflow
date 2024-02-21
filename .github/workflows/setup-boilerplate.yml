@@ -46,8 +46,10 @@ jobs:
             baseUrl=$(jq -r '.baseUrl' $boilerplate/cypress.json)
             apiUrl=$(jq -r '.env.apiUrl' $boilerplate/cypress.json)
           elif [ -f "$boilerplate/cypress.config.js" ]; then
-            baseUrl=$(node -p "require('./$boilerplate/cypress.config.js').e2e.baseUrl")
-            apiUrl=$(node -p "require('./$boilerplate/cypress.config.js').env.apiUrl")
+            # install cypress
+            npm i
+            baseUrl=$(node -p "require('./$boilerplate/cypress.config.js').e2e.baseUrl ?? ''")
+            apiUrl=$(node -p "require('./$boilerplate/cypress.config.js').env.apiUrl ?? ''")
           else
             echo "Neither cypress.json nor cypress.config.js was found in the $boilerplate directory"
             exit 1
