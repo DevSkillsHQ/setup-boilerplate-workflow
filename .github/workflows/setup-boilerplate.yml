@@ -29,6 +29,7 @@ jobs:
           branch_name=${{ github.event.inputs.branch-name }}
           boilerplate=${{ github.event.inputs.boilerplate }}
           git clone https://github.com/DevSkillsHQ/$boilerplate.git
+          [ -e $boilerplate/.devcontainer/devcontainer.json ] && mkdir -p .devcontainer && cp $boilerplate/.devcontainer/devcontainer.json .devcontainer/devcontainer.json
           cp $boilerplate/package.json .
           cp $boilerplate/cypress.json .
           cp -r $boilerplate/app* .
